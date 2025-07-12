@@ -16,20 +16,31 @@ import { naviName } from '../config/naviName';
 
 const HomeScreen = () => {
   const [users, setUsers] = useState([]);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const navigation = useNavigation();
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (pageNumber = 1, isLoadMore = false) => {
+    if (!hasMore && isLoadMore) return;
+
     try {
-      const response = await Services.getUsers();
-      console.log('Fetched Users:', response.data);
-      setUsers(response.data);
+      isLoadMore ? setLoadingMore(true) : setLoading(true);
+      const response = await Services.getUsers(pageNumber);
+      const newUsers = response.data;
+
+      if (isLoadMore) {
+        setUsers(prev => [...prev, ...newUsers]);
+      } else {
+        setUsers(newUsers);
+      }
+
+      setHasMore(pageNumber < response.total_pages); // assuming total_pages is returned
     } catch (error) {
       console.log('Error fetching users:', error);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      isLoadMore ? setLoadingMore(false) : setLoading(false);
     }
   };
 
@@ -37,9 +48,18 @@ const HomeScreen = () => {
     fetchUsers();
   }, []);
 
+  const handleLoadMore = () => {
+    if (!loadingMore && hasMore) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchUsers(nextPage, true);
+    }
+  };
+
   const handleRefresh = () => {
-    setRefreshing(true);
-    fetchUsers();
+    setPage(1);
+    setHasMore(true);
+    fetchUsers(1, false);
   };
 
   const handleLogout = async () => {
@@ -75,7 +95,7 @@ const HomeScreen = () => {
     </View>
   );
 
-  if (loading) {
+  if (loading && page === 1) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="blue" />
@@ -91,10 +111,16 @@ const HomeScreen = () => {
         data={users}
         renderItem={renderItem}
         keyExtractor={(item) => item.id.toString()}
-        ListEmptyComponent={<Text>No users found.</Text>}
         showsVerticalScrollIndicator={false}
-        refreshing={refreshing}
+        refreshing={loading}
         onRefresh={handleRefresh}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={() =>
+          loadingMore ? (
+            <ActivityIndicator size="small" color="blue" />
+          ) : null
+        }
       />
 
       <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>

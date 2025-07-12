@@ -41,17 +41,17 @@ const Services = {
       throw error;
     }
   },
+getUsers: async (page = 1) => {
+  try {
+    const url = getApiEndpoint('Home') + `?page=${page}`;
+    const response = await apiClient.get(url);
+    return response.data; 
+  } catch (error: any) {
+    console.error('Get Users API Error:', error.message || error);
+    throw error;
+  }
+},
 
-  getUsers: async (): Promise<User[]> => {
-    try {
-      const url = getApiEndpoint('Home');
-      const response = await apiClient.get(url);
-      return response.data;
-    } catch (error: any) {
-      console.error('Get Users API Error:', error.message || error);
-      throw error;
-    }
-  },
 };
 
 
